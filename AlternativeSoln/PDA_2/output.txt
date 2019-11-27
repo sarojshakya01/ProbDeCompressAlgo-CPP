@@ -1,0 +1,14 @@
+4 Binary comCode = 1
+6 Binary comCode = 101
+1 Binary comCode = 10100
+S Binary comCode = 10010010
+O Binary comCode = 10001000100
+0 Binary comCode = 00010000010001
+  Binary comCode = 00100000100000100
+<EOL> Binary comCode = 00000010000001000001
+3 Binary comCode = 000010000000010000011000
+C Binary comCode = 100100000010010000001001000000
+Decompressed file contents:
+COSC 1306
+COSC 1430
+COSC 3360
