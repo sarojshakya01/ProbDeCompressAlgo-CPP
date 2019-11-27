@@ -4,38 +4,34 @@
 using namespace std; 
 #define size 100 // length of the message to be decompressed
 
-string comCode[size]; // list of compressed comCode of the characters
-char messageList[size]={}; // list of unique characters in the message
+class message
+{
+public:
+	char chr; // uniq character
+	int count; // count of uniq characters
+	string bcode; // binary code
+};
+
+message list[size]; // input compressed message list
 int messageCount=0; // number of unique characters in the message
-int countList[size]={0}; // list of frequency of the unique characters in the message
-char message[size]; // message to be decompressed
+int childcount = 0; // no. of child thread counter
+char dmessage[size]; // decompredded original message
 
 
 // this function sorts the characters based on their freq (and ascii value for same frequency)
-void sortMessage() {
+void sortlist() {
 	for (int i=0; i<messageCount; i++){
 		for (int j=i+1; j<messageCount; j++){
-			if (countList[j]<countList[i]){
-				int temp_freq=countList[i];
-				string temp_comCode=comCode[i];
-				char temp_ch=messageList[i];
-				countList[i]=countList[j];
-				messageList[i]= messageList[j];
-				comCode[i]=comCode[j];
-				countList[j]=temp_freq;
-				comCode[j]=temp_comCode;
-				messageList[j]=temp_ch;
-			} else if (countList[j] == countList[i]){
-				if (messageList[j] > messageList[i]){
-					char temp_ch=messageList[i];
-					int temp_freq=countList[i];
-					string temp_comCode=comCode[i];
-					countList[i]=countList[j];
-					comCode[i]=comCode[j];
-					messageList[i]= messageList[j];
-					countList[j]=temp_freq;
-					messageList[j]=temp_ch;
-					comCode[j]=temp_comCode;
+			if (list[j].count < list[i].count){
+				message temp;
+				temp = list[i];
+				list[i] = list[j];
+				list[j] = temp;
+			} else if (list[j].count == list[i].count){
+				if (list[j].chr > list[i].chr){
+					message temp = list[i];
+					list[i] = list[j];
+					list[j] = temp;
 				}
 			}
 		}
@@ -43,43 +39,35 @@ void sortMessage() {
 }
 
 
-// this function finds the index in string array (arg1: string array, arg2: element)
-int findIndex(char *strArr, char c) {
-	int i=0, idx=-1;
-	while(strArr[i] != '\0'){
-		if (c == strArr[i]){
-			idx=i;
-			break;
-		}
-		i++;
-	}
-	return idx;
-}
-
-
 // child thread
 void * child_thrd_function(void* msg) {
-	int idx=findIndex(messageList, *(char*)msg);
+	
+	int count=0,count1=0;
+	string prevmsg=dmessage; // to store previous result
 
-	if (messageList[idx] == '\n') {
-		cout<<"<EOL> Binary comCode = "<<comCode[idx]<<endl;
+	if (list[childcount].chr == '\n') {
+		cout<<"<EOL> Binary Code = "<<list[childcount].bcode<<"\n";
 	} else {
-		cout<<messageList[idx]<<" Binary comCode = "<<comCode[idx]<<endl;
+		cout<<list[childcount].chr<<" Binary Code = "<<list[childcount].bcode<<"\n";
 	}
 
-	int tempcount=0, count=0;
-	string tempmsg=message;
-	
-	for(int j=0; j<comCode[idx].length(); j++) {
-		if (comCode[idx][j] == '1') {
-			message[count]=messageList[idx];
-			count++;
-		} else if (comCode[idx][j] == '0') {
-			message[count]=tempmsg[tempcount];
-			count++;
-			tempcount++;
+	for(int j=0; j<list[childcount].bcode.length(); j++) {
+		switch(list[childcount].bcode[j]){
+			case '1':
+				dmessage[count]=list[childcount].chr;
+				count++;
+				break;
+			case '0':
+				dmessage[count]=prevmsg[count1];
+				count++;
+				count1++;
+				break;
+			default:
+				break;
+
 		}
 	}
+	childcount++;
 }
 
 
@@ -93,11 +81,11 @@ int main(int argc, char *argv[]) {
 		getline(cin, myLine[idx]); // take input line by line and store to myLine
 		
 		// find the unique characters in the message
-		if (myLine[idx][0] == '<' && myLine[idx][1] == 'E' && myLine[idx][2] == 'O' && myLine[idx][3] == 'L' && myLine[idx][4] == '>') {
-			messageList[idx]='\n';
+		if (myLine[idx].substr(0,5) == "<EOL>") {
+			list[idx].chr='\n';
 			codeStart=6;
 		} else {
-			messageList[idx]=myLine[idx][0];
+			list[idx].chr=myLine[idx][0];
 			codeStart=2;
 		}
 
@@ -107,38 +95,38 @@ int main(int argc, char *argv[]) {
 				repeatCount++;
 			}
 			if (myLine[idx].length() - codeStart <= 100) {
-				comCode[idx]=myLine[idx].substr(codeStart, myLine[idx].length() - codeStart);
+				list[idx].bcode=myLine[idx].substr(codeStart, myLine[idx].length() - codeStart);
 			}
 		}
 
-		countList[idx]=repeatCount;
+		list[idx].count=repeatCount;
 		if (myLine[idx][0] == '\0') break;// condition to break the while loop
 		idx++; // increment the index of line
 	}
 
 	messageCount=idx; // total number of unique characters in the message
-	sortMessage(); // sort the message
-	memset(message, 0, sizeof(message)); // clear the garbage value of the array element
+	sortlist(); // sort the message
+	memset(dmessage, 0, sizeof(dmessage)); // clear the garbage value of the array element
 	pthread_t mythread[messageCount]; // declaration of the thread
 	
 	for (int j=0; j<messageCount; j++){
-		pthread_create(&mythread[j], NULL, &child_thrd_function, (void*)&messageList[j]);
+		pthread_create(&mythread[j], NULL, &child_thrd_function, (void*)&list[j].chr);
 		pthread_join(mythread[j],NULL); // wait the child threads
 	}
-	cout<<"Decompressed file contents:"<<endl<<message<<endl;
+	cout<<"Decompressed file contents:"<<"\n"<<dmessage<<"\n";
 	// writes the output to the file
 	ofstream outfile;
 	outfile.open("./output.txt");
 
 	if (outfile) {
 		for (int i=0; i<messageCount; i ++){
-			if (messageList[i] == '\n') {
-				outfile<<"<EOL> Binary comCode = "<<comCode[i]<<endl;
+			if (list[i].chr == '\n') {
+				outfile<<"<EOL> Binary comCode = "<<list[i].bcode<<"\n";
 			} else {
-				outfile<<messageList[i]<<" Binary comCode = "<<comCode[i]<<endl;
+				outfile<<list[i].chr<<" Binary comCode = "<<list[i].bcode<<"\n";
 			}
 		}
-		outfile<<"Decompressed file contents:"<<endl<<message;
+		outfile<<"Decompressed file contents:"<<"\n"<<dmessage;
 	}
 	outfile.close();
 	return 0;

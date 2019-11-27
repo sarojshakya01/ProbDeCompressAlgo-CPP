@@ -79,9 +79,9 @@ void * childFunc(void* ch) {
 		cout << records[i].msg << " Binary Code = " << records[i].code << endl;
 	}
 
-	string temp = origmsg;
+	string lastmsg = origmsg;
 	int msgcnt = 0;
-	int tempcnt = 0;
+	int lastcnt = 0;
 
 	for(int j = 0; j < records[i].code.length(); j++)
 	{
@@ -89,11 +89,12 @@ void * childFunc(void* ch) {
 		{
 			origmsg[msgcnt] = records[i].msg;
 			msgcnt++;
-		} else if (records[i].code[j] == '0')
+		}
+		else
 		{
-			origmsg[msgcnt] = temp[tempcnt];
+			origmsg[msgcnt] = lastmsg[lastcnt];
 			msgcnt++;
-			tempcnt++;
+			lastcnt++;
 		}
 	}
 }
