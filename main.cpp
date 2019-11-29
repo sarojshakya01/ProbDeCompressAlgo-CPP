@@ -1,11 +1,14 @@
 #include <iostream>
 #include <fstream>
 #include <cstring>
+#include <semaphore.h>
 
 using namespace std; 
 
 #define max_size 100 // total length of the message
 #define EOL "<EOL>"
+
+static sem_t s;
 
 int uniq_count = 0; // total unique characters in the message
 int freq_list[max_size]={0}; // list of frequency of the characters
@@ -68,9 +71,9 @@ void * child_thread(void* symbol) {
 	int i = indexOf(*(char*)symbol, uniq_msg);
 
 	if (uniq_msg[i] == '\n') {
-		cout << EOL << " Binary Code = " << code[i] << endl;
+		cout << EOL << " Binary code = " << code[i] << endl;
 	} else {
-		cout << uniq_msg[i] << " Binary Code = " << code[i] << endl;
+		cout << uniq_msg[i] << " Binary code = " << code[i] << endl;
 	}
 
 	string temp = msg;
@@ -87,6 +90,9 @@ void * child_thread(void* symbol) {
 			tempcnt++;
 		}
 	}
+
+	sem_post(&s);
+	pthread_exit(NULL);
 }
 
 int main(int argc, char *argv[]) {
@@ -143,11 +149,33 @@ int main(int argc, char *argv[]) {
 
 	memset(msg, 0, sizeof(msg)); // reset the array
 
-	for (int i = 0; i < uniq_count; i++){
-		pthread_create(&t[i], NULL, &child_thread, (void*)&uniq_msg[i]);
-		pthread_join(t[i],NULL); // wait untill the child threads completes the execution
+	int ok;
+
+	ok = sem_init(&s, 0, 0);
+
+	if (ok < 0) {
+		perror("Semaphore Initialization Error");
+		return(EXIT_FAILURE);
 	}
 
+	for (int i = 0; i < uniq_count; i++){
+
+		ok = pthread_create(&t[i], NULL, &child_thread, (void*)&uniq_msg[i]);
+		if (ok != 0) {
+			perror("Thread Creation failed!");
+			exit(EXIT_FAILURE);
+		}
+		sem_wait(&s);
+
+		ok = pthread_join(t[i],NULL); // wait untill the child threads completes the execution
+
+		if (ok != 0) {
+			perror("Thread joined failed!");
+			exit(EXIT_FAILURE);
+		}
+	}
+
+	sem_destroy(&s);
 	cout << "Decompressed file contents:" << endl << msg << endl;
 
 	// writes the code to the file
@@ -161,16 +189,16 @@ int main(int argc, char *argv[]) {
 
 	for (int i = 0; i < uniq_count; i ++){
 		if (uniq_msg[i] == '\n') {
-			outfile << EOL << " Binary Code = " << code[i] << endl;
+			outfile << EOL << " Binary code = " << code[i] << endl;
 		} else {
-			outfile << uniq_msg[i] << " Binary Code = " << code[i] << endl;
+			outfile << uniq_msg[i] << " Binary code = " << code[i] << endl;
 		}
 	}
 
 	outfile << "Decompressed file contents:" << endl << msg;
 
 	outfile.close();
-
+	pthread_exit(NULL);
 	exit(EXIT_SUCCESS);
 
 	return 0;

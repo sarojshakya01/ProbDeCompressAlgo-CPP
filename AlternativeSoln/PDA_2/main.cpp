@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
+#include <semaphore.h>
 using namespace std; 
 #define size 100 // length of the message to be decompressed
 
@@ -12,6 +13,7 @@ public:
 	string bcode; // binary code
 };
 
+sem_t mysem;
 message list[size]; // input compressed message list
 int messageCount=0; // number of unique characters in the message
 int childcount = 0; // no. of child thread counter
@@ -46,9 +48,9 @@ void * child_thrd_function(void* msg) {
 	string prevmsg=dmessage; // to store previous result
 
 	if (list[childcount].chr == '\n') {
-		cout<<"<EOL> Binary Code = "<<list[childcount].bcode<<"\n";
+		cout<<"<EOL> Binary code = "<<list[childcount].bcode<<"\n";
 	} else {
-		cout<<list[childcount].chr<<" Binary Code = "<<list[childcount].bcode<<"\n";
+		cout<<list[childcount].chr<<" Binary code = "<<list[childcount].bcode<<"\n";
 	}
 
 	for(int j=0; j<list[childcount].bcode.length(); j++) {
@@ -68,6 +70,8 @@ void * child_thrd_function(void* msg) {
 		}
 	}
 	childcount++;
+	sem_post(&mysem);
+	pthread_exit(NULL);
 }
 
 
@@ -109,10 +113,16 @@ int main(int argc, char *argv[]) {
 	memset(dmessage, 0, sizeof(dmessage)); // clear the garbage value of the array element
 	pthread_t mythread[messageCount]; // declaration of the thread
 	
+	if (sem_init(&mysem, 0, 0) < 0) {
+		perror("Semaphore Initialization Error");
+		return(EXIT_FAILURE);
+	}
 	for (int j=0; j<messageCount; j++){
 		pthread_create(&mythread[j], NULL, &child_thrd_function, (void*)&list[j].chr);
+		sem_wait(&mysem);
 		pthread_join(mythread[j],NULL); // wait the child threads
 	}
+	sem_destroy(&mysem);
 	cout<<"Decompressed file contents:"<<"\n"<<dmessage<<"\n";
 	// writes the output to the file
 	ofstream outfile;
@@ -121,9 +131,9 @@ int main(int argc, char *argv[]) {
 	if (outfile) {
 		for (int i=0; i<messageCount; i ++){
 			if (list[i].chr == '\n') {
-				outfile<<"<EOL> Binary comCode = "<<list[i].bcode<<"\n";
+				outfile<<"<EOL> Binary code = "<<list[i].bcode<<"\n";
 			} else {
-				outfile<<list[i].chr<<" Binary comCode = "<<list[i].bcode<<"\n";
+				outfile<<list[i].chr<<" Binary code = "<<list[i].bcode<<"\n";
 			}
 		}
 		outfile<<"Decompressed file contents:"<<"\n"<<dmessage;

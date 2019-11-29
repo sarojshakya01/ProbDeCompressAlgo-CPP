@@ -4,6 +4,8 @@
 
 #include <fstream>
 
+#include <semaphore.h>
+
 using namespace std;
 
 #define size 100
@@ -15,6 +17,7 @@ struct elements
 	string code;
 };
 
+sem_t sem;
 int no_char = 0; // no of unique character in the message
 char origmsg[size]; // original message to be decompressed
 elements records[size]; // reach records with unique character, its freq and compressed code
@@ -73,10 +76,10 @@ void * childFunc(void* ch) {
 	
 	if (records[i].msg == '\n')
 	{
-		cout << "<EOL> Binary Code = " << records[i].code << endl;
+		cout << "<EOL> Binary code = " << records[i].code << endl;
 	} else
 	{
-		cout << records[i].msg << " Binary Code = " << records[i].code << endl;
+		cout << records[i].msg << " Binary code = " << records[i].code << endl;
 	}
 
 	string lastmsg = origmsg;
@@ -97,6 +100,7 @@ void * childFunc(void* ch) {
 			lastcnt++;
 		}
 	}
+	sem_post(&sem);
 }
 
 int main(int argc, char const *argv[])
@@ -128,6 +132,11 @@ int main(int argc, char const *argv[])
 
 	selectionSort(records, no_char);
 
+	if (sem_init(&sem, 0, 0) < 0) {
+		perror("Semaphore Initialization Error");
+		return(EXIT_FAILURE);
+	}
+
 	pthread_t td[no_char];
 	
 	for (int i = 0; i < no_char; i++)
@@ -135,9 +144,13 @@ int main(int argc, char const *argv[])
 
 		pthread_create(&td[i], NULL, &childFunc, (void*)&records[i].msg);
 		
+		sem_wait(&sem);
+
 		pthread_join(td[i],NULL);
 		
 	}
+
+	sem_destroy(&sem);
 
 	cout<<"Decompressed file contents:"<<endl<<origmsg<<endl;
 	ofstream outputFile;
